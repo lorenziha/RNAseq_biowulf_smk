@@ -177,7 +177,7 @@ rule map_reads:
                 --runThreadN {threads} \
                 --genomeDir {input.genome_dir} \
                 --alignSJDBoverhangMin 1 \
-                --alignSJoverhangMin 51 \
+                --alignSJoverhangMin 5 \
                 --outFilterMismatchNmax 2 \
                 --alignEndsType EndToEnd \
                 --readFilesIn {input.fq1} {input.fq2} \
