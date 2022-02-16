@@ -11,6 +11,9 @@ import glob
 
 configfile: "config/config.yml"
 samples = config["samples"].keys()
+genome = config["reference"]["genome_file"]
+annotation = config["reference"]["ensembl_gtf"]
+starOverhang = config["star_db"]["sjdbOverhang"]
 
 # Build directory structure
 paths = ["data/00ref", "data/00reads", "data/00adapters",
@@ -48,7 +51,8 @@ rule all:
             o6 = expand("results/06fastqc_trim/{s}.2U_fastqc.html", s=samples),
             o7 = "results/07multiqc/multiqc_done.flag",
             o8 = "results/05correlation/multiBamSummary.results.npz",
-            o9 = expand("results/05bigwig/{s}.bw", s=samples)
+            o9 = expand("results/05bigwig/{s}.bw", s=samples),
+            o11 = "data/00ref/SA"
             #expand("00map_reads/{s}.", s=samples) #,
             #expand("00abundant/{s}.fastq.1.gz", s=samples),
             #expand("00abundant/{s}.fastq.2.gz", s=samples)
@@ -97,7 +101,7 @@ rule trim:
         """
 
 rule build_abundant_db:
-    input: "data/00ref/abundant_rna.fasta"
+    input: config["reference"]["abundant_rna_file"]
     output: "data/00ref/abundant"
     shell:
         """
@@ -131,9 +135,27 @@ rule rm_abundant_rnas:
          --un-conc-gz results/02abundant/{wildcards.sample}.fastq.gz \
          -1 {input.fq1P} -2 {input.fq2P} -S {output.sam} 2> {log.logs}
         """
-# rule make_star_index:
-# shell:
-# STAR --runMode genomeGenerate --genomeDir . --genomeFastaFiles GCA_000001405.15_GRCh38_no_alt_analysis_set.fna --sjdbGTFfile hg38.ensGene.gtf --sjdbOverhang 74
+
+rule make_star_index:
+    input: gen = f"{genome}", 
+        ann = f"{annotation}", 
+        so = f"{starOverhang}"
+    output: db = "data/00ref/SA",
+            db_dir = "data/00ref"
+    resources: 
+        mem_mb = 32000,
+        cpus_per_task = 16,
+        partition = "norm",
+        time = "3:00:00"
+    threads: 16
+    shell:
+        """
+            STAR --runMode genomeGenerate \
+             --genomeDir {output.db_dir} \
+             --genomeFastaFiles {input.gen} \
+             --sjdbGTFfile {input.ann} \
+             --sjdbOverhang {input.so}
+        """
 
 rule map_reads:
     input: fq1 = "results/02abundant/{sample}.fastq.1.gz",
@@ -191,14 +213,14 @@ rule make_bigwig:
     input: "results/04dedup/{sample}.sorted.dedup.bam"
     output: "results/05bigwig/{sample}.bw"
     params: "--binSize 10 --normalizeUsing BPM" #  + "--filterRNAstrand [forward/reverse]" to plot strand-specific data
-    threads: 1
+    threads: 8
     resources:
-        cpus_per_task = 1,
+        cpus_per_task = 8,
         partition = "norm",
         time = "3:00:00"
     shell:
         """
-        bamCoverage -b {input} -o {output} {params}
+        bamCoverage -p {threads} -b {input} -o {output} {params}
         """
 
 rule run_correlation_analysis:
