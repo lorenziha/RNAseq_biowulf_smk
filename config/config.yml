@@ -1,0 +1,16 @@
+# Metadata
+reference:  
+    abundant_rna_file: data/00ref/abundant_rna.fasta
+    ensembl_ver: 38
+    ensembl_gtf: data/00ref/hg38.ensGene.gtf
+    genome_build: hg38
+    genome_file: data/00ref/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna
+    star_index: 00ref
+    genome_source: ucsd
+star_db:
+    sjdbOverhang: 74
+samples:
+    AK4503-6:
+    AK5404-43:
+    AK5404-47:
+

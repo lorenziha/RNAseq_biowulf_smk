@@ -1,0 +1,16 @@
+channels:
+  - bioconda
+  - conda-forge
+  - agbiome
+dependencies:
+  - bbtools=37.62
+  - snakemake-minimal >=5.24.1
+  - trimmomatic =0.39
+  - bowtie2 =2.4.5
+  - star =2.7.10a
+  - picard =2.26.10
+  - deeptools =3.5.1
+  - fastqc =0.11.9
+  - multiqc =1.11
+  - subread =2.0.1
+  - samtools=1.14
