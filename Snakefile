@@ -122,7 +122,7 @@ rule rm_abundant_rnas:
     resources:
         cpus_per_task = 16,
         partition = "norm",
-        time = "3:00:00"
+        time = "24:00:00"
     log: 
         metrics = "results/02abundant/{sample}.metrics.txt",
         logs = "results/02abundant/{sample}.log"
@@ -167,7 +167,7 @@ rule map_reads:
     resources:
         cpus_per_task = 16,
         partition = "norm",
-        time = "3:00:00",
+        time = "14:00:00",
         mem_mb = 32000
     benchmark:
         "benchmarks/map_reads/{sample}.tsv"
@@ -259,7 +259,8 @@ rule counts:
     resources:
         cpus_per_task = 8,
         partition = "norm",
-        time = "3:00:00"
+        time = "14:00:00",
+        mem_mb = 16000
     shell:
         """
         featureCounts {params} -G {input.genome} -T {threads}\
