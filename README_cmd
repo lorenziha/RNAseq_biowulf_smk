@@ -1,0 +1,13 @@
+# To load conda environment and install required tools
+mamba env create -f=environment_bbtools.yml -n rnaseq
+conda activate rnaseq
+
+# Run entire pipeline
+snakemake --profile slurm
+
+# Run specific rule
+## First try a dry run
+snakemake -R --until $MY_RULE --cores $CPUs -n
+## Then do the actual run
+snakemake -R --until $MY_RULE --cores $CPUs
+

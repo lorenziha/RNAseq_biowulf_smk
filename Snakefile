@@ -47,12 +47,11 @@ rule all:
             o2 = expand("results/06fastqc_raw/{s}.R2_fastqc.html", s=samples),
             o3 = expand("results/06fastqc_trim/{s}.1P_fastqc.html", s=samples),
             o4 = expand("results/06fastqc_trim/{s}.2P_fastqc.html", s=samples),
-            o5 = expand("results/06fastqc_trim/{s}.1U_fastqc.html", s=samples),
-            o6 = expand("results/06fastqc_trim/{s}.2U_fastqc.html", s=samples),
             o7 = "results/07multiqc/multiqc_done.flag",
             o8 = "results/05correlation/multiBamSummary.results.npz",
             o9 = expand("results/05bigwig/{s}.bw", s=samples),
-            o11 = "data/00ref/SA"
+            o11 = "data/00ref/SA",
+            o12 = expand("results/01trim/{s}.U.fastq.gz", s=samples)
             #expand("00map_reads/{s}.", s=samples) #,
             #expand("00abundant/{s}.fastq.1.gz", s=samples),
             #expand("00abundant/{s}.fastq.2.gz", s=samples)
@@ -73,31 +72,32 @@ rule merge_rep:
         cat {input.fq2}  > {output.merge2}
         """
 
-rule trim:
+rule trimming:
     input:  fq1 = "results/00merged_reads/{sample}.R1.fastq.gz",
             fq2 = "results/00merged_reads/{sample}.R2.fastq.gz", 
 
     output:
             fq1P = "results/01trim/{sample}.1P.fastq.gz",
-            fq1U = "results/01trim/{sample}.1U.fastq.gz",
             fq2P = "results/01trim/{sample}.2P.fastq.gz",
-            fq2U = "results/01trim/{sample}.2U.fastq.gz"
+            fqU = "results/01trim/{sample}.U.fastq.gz"
     params: 
-            "ILLUMINACLIP:data/00adapters/TruSeq3-PE.fa:2:30:10 MAXINFO:20:0.5 MINLEN:20"
+            "ktrim=r k=23 mink=11 hdist=1 tpe tbo qtrim=rl trimq=20 overwrite=t"
     resources:
         cpus_per_task = 16,
         partition = "norm",
-        time = "3:00:00"
+        time = "10:00:00"
     threads: 16
-    log:    "results/01trim/{sample}.log"
+    log:    log1 = "results/01trim/{sample}.log",
+            log2 = "results/01trim/{sample}.stats.log"
     benchmark:
             "benchmarks/trim/{sample}.tsv"
     shell:
         """
-        trimmomatic PE -threads {threads} -phred33 \
-            {input.fq1} {input.fq2} \
-            {output.fq1P} {output.fq1U} {output.fq2P} {output.fq2U} \
-            {params} 2> {log}  
+        bbduk.sh -Xmx1g threads={threads} \
+            in1={input.fq1} in2={input.fq2} \
+            out1={output.fq1P} out2={output.fq2P} outs={output.fqU} \
+            ref=data/00adapters/truseq.fa.gz \
+            {params} stats={log.log2} 2> {log.log1}  
         """
 
 rule build_abundant_db:
