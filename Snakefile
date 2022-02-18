@@ -272,16 +272,14 @@ rule fastqc:
     input: raw1 = "results/00merged_reads/{sample}.R1.fastq.gz",
            raw2 = "results/00merged_reads/{sample}.R2.fastq.gz",
            trim1p = "results/01trim/{sample}.1P.fastq.gz",
-           trim1u = "results/01trim/{sample}.1U.fastq.gz",
-           trim2p = "results/01trim/{sample}.2P.fastq.gz",
-           trim2u = "results/01trim/{sample}.2U.fastq.gz"
+           trim_u = "results/01trim/{sample}.U.fastq.gz",
+           trim2p = "results/01trim/{sample}.2P.fastq.gz"
     output: 
             o1 = "results/06fastqc_raw/{sample}.R1_fastqc.html",
             o2 = "results/06fastqc_raw/{sample}.R2_fastqc.html",
             o3 = "results/06fastqc_trim/{sample}.1P_fastqc.html",
-            o4 = "results/06fastqc_trim/{sample}.1U_fastqc.html",
-            o5 = "results/06fastqc_trim/{sample}.2P_fastqc.html",
-            o6 = "results/06fastqc_trim/{sample}.2U_fastqc.html"
+            o4 = "results/06fastqc_trim/{sample}.U_fastqc.html",
+            o5 = "results/06fastqc_trim/{sample}.2P_fastqc.html"
     shell:
         """
         fastqc -o results/06fastqc_raw {input.raw1} {input.raw2}
