@@ -34,9 +34,7 @@ def get_fq2(wildcards):
 
 # Set what rules to run locally
 localrules: all,
-            build_abundant_db,
-            fastqc,
-            multiqc
+            build_abundant_db
 
 rule all:
     # IMPORTANT: output file fo all rule has to match the name specified in the output file
@@ -50,8 +48,8 @@ rule all:
             o7 = "results/07multiqc/multiqc_done.flag",
             o8 = "results/05correlation/multiBamSummary.results.npz",
             o9 = expand("results/05bigwig/{s}.bw", s=samples),
-            o11 = "data/00ref/SA",
-            o12 = expand("results/01trim/{s}.U.fastq.gz", s=samples)
+            o11 = "data/00ref/SA"
+            #o12 = expand("results/01trim/{s}.U.fastq.gz", s=samples)
             #expand("00map_reads/{s}.", s=samples) #,
             #expand("00abundant/{s}.fastq.1.gz", s=samples),
             #expand("00abundant/{s}.fastq.2.gz", s=samples)
@@ -63,7 +61,7 @@ rule merge_rep:
             merge2 = temp("results/00merged_reads/{sample}.R2.fastq.gz")
     resources: 
         cpu_per_task = 1,
-        partition = "norm",
+        partition = "quick",
         time = "3:00:00"
     threads: 1
     shell:
@@ -84,8 +82,8 @@ rule trimming:
             "ktrim=r k=23 mink=11 hdist=1 tpe tbo qtrim=rl trimq=20 overwrite=t"
     resources:
         cpus_per_task = 16,
-        partition = "norm",
-        time = "10:00:00"
+        partition = "quick",
+        time = "4:00:00"
     threads: 16
     log:    log1 = "results/01trim/{sample}.log",
             log2 = "results/01trim/{sample}.stats.log"
@@ -114,7 +112,6 @@ rule rm_abundant_rnas:
             fq2P = "results/01trim/{sample}.2P.fastq.gz",
             rnas_idx = "data/00ref/abundant"
     output:
-        sam = temp("results/02abundant/{sample}.sam"),
         fq1F = "results/02abundant/{sample}.fastq.1.gz",
         fq2F = "results/02abundant/{sample}.fastq.2.gz"
     
@@ -122,7 +119,8 @@ rule rm_abundant_rnas:
     resources:
         cpus_per_task = 16,
         partition = "norm",
-        time = "24:00:00"
+        time = "24:00:00",
+        gres = "lscratch:20"
     log: 
         metrics = "results/02abundant/{sample}.metrics.txt",
         logs = "results/02abundant/{sample}.log"
@@ -133,9 +131,9 @@ rule rm_abundant_rnas:
         bowtie2 --threads {threads} -L 20 -x {input.rnas_idx} \
          --met-file {log.metrics} \
          --un-conc-gz results/02abundant/{wildcards.sample}.fastq.gz \
-         -1 {input.fq1P} -2 {input.fq2P} -S {output.sam} 2> {log.logs}
-        """
-
+         -1 {input.fq1P} -2 {input.fq2P} 2> {log.logs} 1> /dev/null
+        """ 
+       
 rule make_star_index:
     input: gen = f"{genome}", 
         ann = f"{annotation}", 
@@ -145,8 +143,9 @@ rule make_star_index:
     resources: 
         mem_mb = 32000,
         cpus_per_task = 16,
-        partition = "norm",
-        time = "3:00:00"
+        partition = "quick",
+        time = "3:00:00",
+        gres = "lscratch:20"
     threads: 16
     shell:
         """
@@ -168,7 +167,8 @@ rule map_reads:
         cpus_per_task = 16,
         partition = "norm",
         time = "14:00:00",
-        mem_mb = 32000
+        mem_mb = 32000,
+        gres = "lscratch:20"
     benchmark:
         "benchmarks/map_reads/{sample}.tsv"
     shell:
@@ -196,13 +196,14 @@ rule remove_duplicates:
     benchmark:
         "benchmarks/remove_duplicates/{sample}.tsv"
     resources:
-        cpus_per_task = 1,
-        mem_mb = 4000,
-        partition = "norm",
-        time = "3:00:00"
+        cpus_per_task = 4,
+        mem_mb = 64000,
+        partition = "quick",
+        time = "4:00:00",
+        gres = "lscratch:20"
     shell:
         """
-        picard -Xmx4g MarkDuplicates \
+        picard -Xmx32g MarkDuplicates \
          I={input} \
          O={output} \
          M={log} \
@@ -217,7 +218,7 @@ rule make_bigwig:
     resources:
         cpus_per_task = 8,
         partition = "norm",
-        time = "3:00:00"
+        time = "14:00:00"
     shell:
         """
         bamCoverage -p {threads} -b {input} -o {output} {params}
@@ -232,7 +233,7 @@ rule run_correlation_analysis:
     resources:
         cpus_per_task = 1,
         partition = "norm",
-        time = "3:00:00"
+        time = "14:00:00"
     shell: 
         """
         multiBamSummary bins --bamfiles {input} -o {output}
@@ -255,12 +256,12 @@ rule counts:
                                                                    #              instead of 1 (1/x where x = numb alignments reported for same read)
     benchmark:
         "benchmarks/counts/counts.tsv"
-    threads: 8
+    threads: 16
     resources:
-        cpus_per_task = 8,
+        cpus_per_task = 16,
         partition = "norm",
         time = "14:00:00",
-        mem_mb = 16000
+        mem_mb = 32000
     shell:
         """
         featureCounts {params} -G {input.genome} -T {threads}\
@@ -278,13 +279,19 @@ rule fastqc:
             o1 = "results/06fastqc_raw/{sample}.R1_fastqc.html",
             o2 = "results/06fastqc_raw/{sample}.R2_fastqc.html",
             o3 = "results/06fastqc_trim/{sample}.1P_fastqc.html",
-            o4 = "results/06fastqc_trim/{sample}.U_fastqc.html",
             o5 = "results/06fastqc_trim/{sample}.2P_fastqc.html"
+    threads: 8
+    resources:
+        cpus_per_task = 8,
+        partition = "quick",
+        time = "4:00:00",
+        mem_mb = 4000
+    params:
+        "--quiet"
     shell:
         """
-        fastqc -o results/06fastqc_raw {input.raw1} {input.raw2}
-        fastqc -o results/06fastqc_trim {input.trim1p} {input.trim1u} \
-         {input.trim2p} {input.trim2u}
+        fastqc {params} -t {threads} -o results/06fastqc_raw {input.raw1} {input.raw2}
+        fastqc {params} -t {threads} -o results/06fastqc_trim {input.trim1p} {input.trim2p}
         """
 absolute_path = "/home/lorenziha/Downloads/snakemake-class/workflow/"
 
@@ -299,6 +306,10 @@ rule multiqc:
            i7 = "results/06fastqc_raw",
            i8 = "results/06fastqc_trim"
     output: "results/07multiqc/multiqc_done.flag"
+    resources:
+        partition = "quick",
+        time = "4:00:00",
+        mem_mb = 4000                    
     shell:
         """
         multiqc -f -d -o results/07multiqc {input.i1} \
