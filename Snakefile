@@ -30,7 +30,9 @@ def get_fq1(wildcards):
             return [ my_files for my_files in glob.glob(f"data/00reads/{wildcards.sample}_*_R1*.fastq.gz")]
 
 def get_fq2(wildcards):
-            return [ my_files for my_files in glob.glob(f"data/00reads/{wildcards.sample}_*_R2*.fastq.gz")]
+            b = [ my_files for my_files in glob.glob(f"data/00reads/{wildcards.sample}_*_R1*.fastq.gz")]
+            c = list(map(lambda x: str.replace(x, "_R1", "_R2"), b))
+            return c
 
 # Set what rules to run locally
 localrules: all,
@@ -40,16 +42,18 @@ rule all:
     # IMPORTANT: output file fo all rule has to match the name specified in the output file
     # and not include suffixes that the command use might add to it.
     input:  #o10 = expand("results/01trim/{s}.{e}.fastq.gz", e=["1P","2P","1U","2U"], s=samples)
-            o0 = "results/05counts/read_counts",
+            o0 = "results/05counts/read_counts.summary",
             o1 = expand("results/06fastqc_raw/{s}.R1_fastqc.html", s=samples),
             o2 = expand("results/06fastqc_raw/{s}.R2_fastqc.html", s=samples),
             o3 = expand("results/06fastqc_trim/{s}.1P_fastqc.html", s=samples),
             o4 = expand("results/06fastqc_trim/{s}.2P_fastqc.html", s=samples),
             o7 = "results/07multiqc/multiqc_done.flag",
-            o8 = "results/05correlation/multiBamSummary.results.npz",
+            #o8 = "results/05correlation/multiBamSummary.results.npz",
             o9 = expand("results/05bigwig/{s}.bw", s=samples),
             o11 = "data/00ref/SA"
-            #o12 = expand("results/01trim/{s}.U.fastq.gz", s=samples)
+            #o12 = expand("results/01trim/{s}.U.fastq.gz", s=samples),
+            #o13 = expand("results/00merged_reads/{s}.R1.fastq.gz", s=samples),
+            #o14 = expand("results/00merged_reads/{s}.R2.fastq.gz", s=samples),
             #expand("00map_reads/{s}.", s=samples) #,
             #expand("00abundant/{s}.fastq.1.gz", s=samples),
             #expand("00abundant/{s}.fastq.2.gz", s=samples)
@@ -249,7 +253,7 @@ rule counts:
         bam = expand("results/04dedup/{s}.sorted.dedup.bam", s=samples)
     output: counts = "results/05counts/read_counts",
             summary = "results/05counts/read_counts.summary"
-    params: "-t CDS -g gene_id -O -s 1 -J -R BAM -p --ignoreDup -M --fraction"  # Current params ignore multimappers and duplicated reads
+    params: "-t CDS -g gene_id -O -s 2 -J -R BAM -p --ignoreDup -M --fraction"  # Current params ignore multimappers and duplicated reads
                                                                    # -p = count fragments instead of individual reads
                                                                    # -M = include multi-mapping reads -O count reads mapping overlapping features
                                                                    # --fraction = multimapped reads will be caused as a fraction 
