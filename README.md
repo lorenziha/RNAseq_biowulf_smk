@@ -5,6 +5,8 @@ Bulk RNAseq workflow for Biowulf based on STAR read mapper.
 ```
 mamba env create -f=environment_bbtools.yml -n rnaseq
 ```
+See environment.yml file for tool versions
+
 ## To run the entire snakemake pipeline
 ```
 conda activate rnaseq
